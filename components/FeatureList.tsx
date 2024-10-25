@@ -1,5 +1,3 @@
-import { ChatBubbleLeftRightIcon, GlobeAltIcon, MagnifyingGlassIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
-
 const features = [
   { name: '智能对话', icon: '💬', description: '与AI进行自然语言交流' },
   { name: '多语言支持', icon: '🌐', description: '支持多种语言的翻译和对话' },

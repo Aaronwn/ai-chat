@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import ChatInput from '@/components/ChatInput'
-import AIChatHistory from '@/components/AIChatHistory'
-import FeatureList from '@/components/FeatureList'
+import ChatInput from '../components/ChatInput'
+import AIChatHistory from '../components/AIChatHistory'
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,17 +17,20 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-8 bg-gray-50">
-      <div className="w-full max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">AI聊天助手</h1>
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+    <div className="flex flex-col h-screen bg-white">
+      <header className="bg-white border-b border-gray-200 p-3">
+        <h1 className="text-lg font-semibold text-gray-800 text-center">AI聊天助手</h1>
+      </header>
+      <main className="flex-grow overflow-auto p-4">
+        <div className="max-w-3xl mx-auto">
           <AIChatHistory messages={messages} />
-          <div className="mt-4">
-            <ChatInput onNewMessage={handleNewMessage} messages={messages} />
-          </div>
         </div>
-        <FeatureList />
-      </div>
-    </main>
+      </main>
+      <footer className="bg-white border-t border-gray-200 p-3">
+        <div className="max-w-3xl mx-auto">
+          <ChatInput onNewMessage={handleNewMessage} messages={messages} />
+        </div>
+      </footer>
+    </div>
   )
 }
