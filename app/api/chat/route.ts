@@ -30,23 +30,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // 添加超时控制
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
-
     try {
       console.log('Sending request to DeepSeek API...');
-      const response = await openai.chat.completions.create({
+
+      // 使用 Promise.race 来实现超时控制
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000);
+      });
+
+      const responsePromise = openai.chat.completions.create({
         model: "deepseek-chat",
         messages: messages,
         temperature: 0.7,
         max_tokens: 2000,
-        // 添加信号控制器
-        signal: controller.signal as any,
       });
-      console.log('Received response from DeepSeek API');
 
-      clearTimeout(timeoutId);
+      const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
+      console.log('Received response from DeepSeek API');
 
       if (!response.choices || response.choices.length === 0) {
         console.error('No choices in API response');
@@ -58,8 +58,13 @@ export async function POST(req: Request) {
 
       return NextResponse.json(response.choices[0].message);
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      throw error; // 重新抛出错误以便外层 catch 处理
+      if (error.message === 'Request timeout') {
+        return NextResponse.json(
+          { error: '请求超时，请稍后重试' },
+          { status: 504 }
+        );
+      }
+      throw error;
     }
   } catch (error: any) {
     console.error('Error details:', {
@@ -67,14 +72,6 @@ export async function POST(req: Request) {
       name: error.name,
       stack: error.stack,
     });
-
-    // 处理不同类型的错误
-    if (error.name === 'AbortError') {
-      return NextResponse.json(
-        { error: '请求超时，请稍后重试' },
-        { status: 504 }
-      );
-    }
 
     // 尝试解析错误响应
     let errorMessage = '发生未知错误';
