@@ -37,7 +37,7 @@ export default function ChatInput({ onNewMessage, messages }: ChatInputProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${data.error || ''}`);
+        throw new Error(data.error || '请求失败');
       }
 
       const aiMessage: Message = {
@@ -49,7 +49,7 @@ export default function ChatInput({ onNewMessage, messages }: ChatInputProps) {
       console.error('Error calling API:', error)
       onNewMessage({
         role: 'assistant',
-        content: `抱歉，发生了错误：${error.message}. ${error.details ? `Details: ${error.details}` : ''}`
+        content: `抱歉，发生了错误：${error.message}`
       })
     } finally {
       setIsLoading(false)
