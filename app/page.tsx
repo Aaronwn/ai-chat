@@ -28,7 +28,11 @@ export default function Home() {
       </main>
       <footer className="bg-white border-t border-gray-200 p-3">
         <div className="max-w-3xl mx-auto">
-          <ChatInput onNewMessage={handleNewMessage} messages={messages} />
+          <ChatInput
+            onNewMessage={handleNewMessage}
+            messages={messages}
+            setMessages={setMessages}
+          />
         </div>
       </footer>
     </div>

@@ -9,13 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "encoding": "^0.1.13",
     "next": "^13.4.19",
     "openai": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.6.1",
-    "encoding": "^0.1.13"
+    "supports-color": "^9.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.2.5",

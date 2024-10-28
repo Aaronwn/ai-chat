@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Dispatch, SetStateAction } from 'react'
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,9 +10,10 @@ interface Message {
 interface ChatInputProps {
   onNewMessage: (message: Message) => void;
   messages: Message[];
+  setMessages: Dispatch<SetStateAction<Message[]>>;
 }
 
-export default function ChatInput({ onNewMessage, messages }: ChatInputProps) {
+export default function ChatInput({ onNewMessage, messages, setMessages }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -34,25 +35,79 @@ export default function ChatInput({ onNewMessage, messages }: ChatInputProps) {
         body: JSON.stringify({ messages: [...messages, userMessage] }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || '请求失败');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // 创建一个新的消息对象
       const aiMessage: Message = {
         role: 'assistant',
-        content: data.content || '抱歉，我无法生成回复。'
-      }
-      onNewMessage(aiMessage)
+        content: ''
+      };
+      onNewMessage(aiMessage);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = ''; // 用于累积所有内容
+
+      // 使用 requestAnimationFrame 来实现平滑的打字机效果
+      const updateContent = async () => {
+        try {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            setIsLoading(false);
+            return;
+          }
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ') && line.length > 6) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.content) {
+                  // 累积新内容
+                  accumulatedContent += data.content;
+                  // 更新最后一条消息的内容
+                  setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage.role === 'assistant') {
+                      lastMessage.content = accumulatedContent;
+                    }
+                    return newMessages;
+                  });
+                }
+              } catch (e) {
+                console.error('Error parsing SSE message:', e);
+              }
+            }
+          }
+
+          // 继续读取下一个数据块
+          requestAnimationFrame(updateContent);
+        } catch (error) {
+          console.error('Error reading stream:', error);
+          setIsLoading(false);
+        }
+      };
+
+      // 开始读取流
+      requestAnimationFrame(updateContent);
+
     } catch (error: any) {
-      console.error('Error calling API:', error)
+      console.error('Error calling API:', error);
       onNewMessage({
         role: 'assistant',
         content: `抱歉，发生了错误：${error.message}`
-      })
-    } finally {
-      setIsLoading(false)
+      });
+      setIsLoading(false);
     }
   }
 

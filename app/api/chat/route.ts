@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 
 // 添加环境变量检查和日志
 const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -10,85 +9,98 @@ const openai = new OpenAI({
   baseURL: 'https://api.deepseek.com/v1'
 });
 
+export const runtime = 'edge';
+
 export async function POST(req: Request) {
   try {
     if (!apiKey) {
-      console.error('DEEPSEEK_API_KEY is not configured in environment');
-      return NextResponse.json(
-        { error: 'API key is not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'API key is not configured' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
     }
 
     const { messages } = await req.json();
-    console.log('Received messages:', messages.length);
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Invalid messages format' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Invalid messages format' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
     }
 
-    try {
-      console.log('Sending request to DeepSeek API...');
-
-      // 使用 Promise.race 来实现超时控制
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
-      });
-
-      const responsePromise = openai.chat.completions.create({
-        model: "deepseek-chat",
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
-      });
-
-      const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
-      console.log('Received response from DeepSeek API');
-
-      if (!response.choices || response.choices.length === 0) {
-        console.error('No choices in API response');
-        return NextResponse.json(
-          { error: 'No response from API' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json(response.choices[0].message);
-    } catch (error: any) {
-      if (error.message === 'Request timeout') {
-        return NextResponse.json(
-          { error: '请求超时，请稍后重试' },
-          { status: 504 }
-        );
-      }
-      throw error;
-    }
-  } catch (error: any) {
-    console.error('Error details:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
+    const stream = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 2000,
+      stream: true,
     });
 
-    // 尝试解析错误响应
-    let errorMessage = '发生未知错误';
-    if (error.response) {
-      try {
-        const errorData = await error.response.text();
-        errorMessage = `API 错误: ${errorData}`;
-      } catch (e) {
-        errorMessage = `API 错误: ${error.message}`;
-      }
-    } else {
-      errorMessage = error.message;
-    }
+    // 创建一个新的 ReadableStream
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let buffer = ''; // 用于存储未完成的数据
 
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: error.status || 500 }
+        try {
+          for await (const chunk of stream) {
+            if (chunk.choices && chunk.choices[0]?.delta?.content) {
+              const content = chunk.choices[0].delta.content;
+              buffer += content;
+
+              // 检查是否有完整的字符
+              if (buffer.length > 0) {
+                // 发送完整的字符
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                buffer = ''; // 清空缓冲区
+              }
+            }
+          }
+
+          // 处理剩余的缓冲区内容
+          if (buffer.length > 0) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: buffer })}\n\n`));
+          }
+
+          controller.close();
+        } catch (error) {
+          console.error('Stream processing error:', error);
+          controller.error(error);
+        }
+      },
+      cancel() {
+        // 处理流被取消的情况
+        console.log('Stream was canceled');
+      }
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
+  } catch (error: any) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({
+        error: '服务器错误，请稍后重试',
+        details: error.message
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
   }
 }
+
