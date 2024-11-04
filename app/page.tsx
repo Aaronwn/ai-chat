@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import ChatSidebar from './components/ChatSidebar'
-import { ChatHistory, Message, ChatMessage } from '../types/chat'
+import { ChatHistory, ChatMessage, Message } from '../types/chat'
 import { saveChatHistory, updateChatHistory } from '../lib/firestore'
 
 export default function Home() {

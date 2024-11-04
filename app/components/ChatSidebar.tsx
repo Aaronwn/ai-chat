@@ -35,13 +35,15 @@ export default function ChatSidebar({
   const { user } = useAuth();
 
   // 加载聊天历史
-  const loadHistories = async () => {
+  const loadChatHistories = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
       const chatHistories = await getChatHistories(user.uid);
-      setHistories(chatHistories.sort((a, b) => b.updatedAt - a.updatedAt));
+      setHistories(chatHistories.sort((a, b) =>
+        (b.updatedAt || 0) - (a.updatedAt || 0)
+      ));
     } catch (error) {
       console.error('Error loading chat histories:', error);
     } finally {
@@ -50,12 +52,12 @@ export default function ChatSidebar({
   };
 
   useEffect(() => {
-    loadHistories();
+    loadChatHistories();
   }, [user, shouldRefresh]);
 
   // 处理重命名
   const handleRename = async (chatId: string) => {
-    if (!newTitle.trim()) return;
+    if (!chatId || !newTitle.trim()) return;
 
     try {
       const chat = histories.find(h => h.id === chatId);
@@ -75,7 +77,7 @@ export default function ChatSidebar({
     } catch (error) {
       console.error('Error renaming chat:', error);
       // 如果更新失败，重新加载历史记录以恢复正确状态
-      loadHistories();
+      loadChatHistories();
     } finally {
       setIsRenaming(null);
       setNewTitle('');
@@ -84,6 +86,8 @@ export default function ChatSidebar({
 
   // 处理删除
   const handleDelete = async (chatId: string) => {
+    if (!chatId) return;
+
     try {
       await deleteChatHistory(chatId);
       setShowOptionsFor(null);
@@ -96,6 +100,20 @@ export default function ChatSidebar({
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
+  };
+
+  // 创建新对话
+  const handleNewChat = () => {
+    const newChat: ChatHistory = {
+      id: 'new-' + Date.now(),
+      userId: user?.uid || '',
+      messages: [],
+      title: '新对话',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    onSelectChat(newChat);
+    onNewChat?.();
   };
 
   if (loading) {
@@ -154,14 +172,15 @@ export default function ChatSidebar({
           <div className="relative">
             <button
               onClick={() => {
-                onSelectChat({
-                  id: 'new',
+                const newChat: ChatHistory = {
+                  id: 'new-' + Date.now(),
                   userId: user?.uid || '',
                   messages: [],
                   title: '新对话',
                   createdAt: Date.now(),
                   updatedAt: Date.now()
-                });
+                };
+                onSelectChat(newChat);
                 onNewChat?.();
               }}
               onMouseEnter={() => setShowNewChatTooltip(true)}
@@ -187,7 +206,7 @@ export default function ChatSidebar({
           </div>
         </div>
 
-        {/* 聊天记录列表 */}
+        {/* 聊天录列表 */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 space-y-2">
             {histories.map((chat) => (
@@ -196,7 +215,7 @@ export default function ChatSidebar({
                 className="relative group"
                 onMouseLeave={() => setShowOptionsFor(null)}
               >
-                {isRenaming === chat.id ? (
+                {isRenaming === chat.id && chat.id ? (
                   <input
                     type="text"
                     value={newTitle}
