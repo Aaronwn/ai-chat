@@ -297,10 +297,10 @@ export default function Home() {
                     value={message}
                     onChange={handleTextareaChange}
                     onKeyDown={handleKeyDown}
-                    placeholder="输入消息..."
+                    placeholder="输入消息... (Enter 发送, Shift + Enter 换行)"
                     rows={1}
                     disabled={isLoading}
-                    className="w-full resize-none px-4 py-3 pr-16 max-h-36 overflow-y-auto bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-50"
+                    className="w-full resize-none px-4 py-3 pr-16 max-h-36 overflow-y-auto bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-50 placeholder:text-gray-400 placeholder:text-sm"
                     style={{
                       minHeight: '44px',
                       maxHeight: '200px'
@@ -308,24 +308,21 @@ export default function Home() {
                   />
                   <button
                     type="submit"
-                    className={`absolute right-2 bottom-2 p-1 ${
+                    className={`absolute right-2 bottom-2 p-1.5 rounded transition-colors ${
                       message.trim() && !isLoading
-                        ? 'text-blue-500 hover:text-blue-600'
+                        ? 'text-blue-500 hover:text-white hover:bg-blue-500'
                         : 'text-gray-300'
-                    } transition-colors`}
+                    }`}
                     disabled={!message.trim() || isLoading}
                   >
                     <svg
                       viewBox="0 0 24 24"
-                      className="w-6 h-6 transform rotate-90"
+                      className="w-5 h-5 transform rotate-90"
                       fill="currentColor"
                     >
                       <path d="M 12 2 L 4 22 L 12 19 L 20 22 Z" />
                     </svg>
                   </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-2 px-2 text-center">
-                  按 Enter 发送消息，按 Shift + Enter 换行
                 </div>
               </form>
             </div>
