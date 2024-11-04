@@ -18,6 +18,11 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [refreshKey, setRefreshKey] = useState(0);
 
+  useEffect(() => {
+    setMessages([])
+    setCurrentChat(null)
+  }, [user?.uid])
+
   // 处理选择聊天记录
   const handleSelectChat = (chat: ChatHistory) => {
     if (chat.id === 'new') {
@@ -201,128 +206,138 @@ export default function Home() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      <ChatSidebar
-        onSelectChat={handleSelectChat}
-        currentChatId={currentChat?.id}
-        shouldRefresh={refreshKey}
-        onNewChat={() => setMessages([])}
-      />
+      {user ? (
+        <>
+          <ChatSidebar
+            onSelectChat={handleSelectChat}
+            currentChatId={currentChat?.id}
+            shouldRefresh={refreshKey}
+            onNewChat={() => setMessages([])}
+          />
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-auto p-4">
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`mb-4 ${
-                msg.role === 'user' ? 'text-right' : 'text-left'
-              }`}
-            >
-              <div
-                className={`inline-block max-w-[80%] p-3 rounded-lg ${
-                  msg.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {msg.role === 'user' ? (
-                  msg.content
-                ) : (
-                  <ReactMarkdown
-                    components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
-                          <CodeBlock
-                            language={match[1]}
-                            value={String(children).replace(/\n$/, '')}
-                          />
-                        ) : (
-                          <code className="bg-gray-200 rounded px-1 py-0.5" {...props}>
-                            {children}
-                          </code>
-                        )
-                      },
-                      // 自定义其他 Markdown 元素的样式
-                      p: ({ children }) => <p className="mb-2">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-                      li: ({ children }) => <li className="mb-1">{children}</li>,
-                      h1: ({ children }) => (
-                        <h1 className="text-2xl font-bold mb-3">{children}</h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-xl font-bold mb-2">{children}</h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-lg font-bold mb-2">{children}</h3>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-gray-300 pl-4 my-2 italic">
-                          {children}
-                        </blockquote>
-                      ),
-                      a: ({ children, href }) => (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                    className="prose prose-sm max-w-none"
-                  >
-                    {`${msg.content || (isLoading ? '...' : '')}`}
-                  </ReactMarkdown>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="border-t bg-white px-4 py-4">
-          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-            <div className="relative flex items-end bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] border">
-              <textarea
-                value={message}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyDown}
-                placeholder="输入消息..."
-                rows={1}
-                disabled={isLoading}
-                className="w-full resize-none px-4 py-3 pr-16 max-h-36 overflow-y-auto bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-50"
-                style={{
-                  minHeight: '44px',
-                  maxHeight: '200px'
-                }}
-              />
-              <button
-                type="submit"
-                className={`absolute right-2 bottom-2 p-1 ${
-                  message.trim() && !isLoading
-                    ? 'text-blue-500 hover:text-blue-600'
-                    : 'text-gray-300'
-                } transition-colors`}
-                disabled={!message.trim() || isLoading}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-6 h-6 transform rotate-90"
-                  fill="currentColor"
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-auto p-4">
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`mb-4 ${
+                    msg.role === 'user' ? 'text-right' : 'text-left'
+                  }`}
                 >
-                  <path d="M 12 2 L 4 22 L 12 19 L 20 22 Z" />
-                </svg>
-              </button>
+                  <div
+                    className={`inline-block max-w-[80%] p-3 rounded-lg ${
+                      msg.role === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          code({ node, inline, className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '')
+                            return !inline && match ? (
+                              <CodeBlock
+                                language={match[1]}
+                                value={String(children).replace(/\n$/, '')}
+                              />
+                            ) : (
+                              <code className="bg-gray-200 rounded px-1 py-0.5" {...props}>
+                                {children}
+                              </code>
+                            )
+                          },
+                          // 自定义其他 Markdown 元素的样式
+                          p: ({ children }) => <p className="mb-2">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                          li: ({ children }) => <li className="mb-1">{children}</li>,
+                          h1: ({ children }) => (
+                            <h1 className="text-2xl font-bold mb-3">{children}</h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-xl font-bold mb-2">{children}</h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-lg font-bold mb-2">{children}</h3>
+                          ),
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-4 border-gray-300 pl-4 my-2 italic">
+                              {children}
+                            </blockquote>
+                          ),
+                          a: ({ children, href }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline"
+                            >
+                              {children}
+                            </a>
+                          ),
+                        }}
+                        className="prose prose-sm max-w-none"
+                      >
+                        {`${msg.content || (isLoading ? '...' : '')}`}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
             </div>
-            <div className="text-xs text-gray-500 mt-2 px-2 text-center">
-              按 Enter 发送消息，按 Shift + Enter 换行
+
+            <div className="border-t bg-white px-4 py-4">
+              <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+                <div className="relative flex items-end bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] border">
+                  <textarea
+                    value={message}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="输入消息..."
+                    rows={1}
+                    disabled={isLoading}
+                    className="w-full resize-none px-4 py-3 pr-16 max-h-36 overflow-y-auto bg-transparent border-0 focus:ring-0 focus:outline-none disabled:opacity-50"
+                    style={{
+                      minHeight: '44px',
+                      maxHeight: '200px'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    className={`absolute right-2 bottom-2 p-1 ${
+                      message.trim() && !isLoading
+                        ? 'text-blue-500 hover:text-blue-600'
+                        : 'text-gray-300'
+                    } transition-colors`}
+                    disabled={!message.trim() || isLoading}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="w-6 h-6 transform rotate-90"
+                      fill="currentColor"
+                    >
+                      <path d="M 12 2 L 4 22 L 12 19 L 20 22 Z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-2 px-2 text-center">
+                  按 Enter 发送消息，按 Shift + Enter 换行
+                </div>
+              </form>
             </div>
-          </form>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <p>请登录后开始聊天</p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
