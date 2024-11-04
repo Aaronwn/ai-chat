@@ -17,6 +17,7 @@ export default function Home() {
   const { user } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [refreshKey, setRefreshKey] = useState(0);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   useEffect(() => {
     setMessages([])
@@ -61,12 +62,24 @@ export default function Home() {
     }
   }
 
+  // 中断请求的函数
+  const handleAbort = () => {
+    if (abortController) {
+      abortController.abort();
+      setIsLoading(false);
+      setAbortController(null);
+    }
+  };
+
   // 发送消息的核心逻辑
   const sendMessage = async () => {
     if (!message.trim() || isLoading || !user) return
 
     try {
       setIsLoading(true)
+      const controller = new AbortController()
+      setAbortController(controller)
+
       const newMessage: Message = {
         role: 'user',
         content: message.trim(),
@@ -77,7 +90,6 @@ export default function Home() {
       setMessages(newMessages)
       setMessage('')
 
-      // 准备一个临时的 assistant 消息
       const tempAssistantMessage: Message = {
         role: 'assistant',
         content: '',
@@ -85,7 +97,6 @@ export default function Home() {
       }
       setMessages([...newMessages, tempAssistantMessage])
 
-      // 准备发送给 API 的消息格式
       const apiMessages: ChatMessage[] = newMessages.map(({ role, content }) => ({
         role,
         content
@@ -99,6 +110,7 @@ export default function Home() {
         body: JSON.stringify({
           messages: apiMessages
         }),
+        signal: controller.signal
       })
 
       if (!response.ok || !response.body) {
@@ -138,9 +150,8 @@ export default function Home() {
         }
       }
 
-      // 保存聊天记录时使用正确的类型
       const finalMessages: Message[] = [...newMessages, {
-        role: 'assistant' as const,
+        role: 'assistant',
         content: assistantMessage,
         timestamp: Date.now()
       }]
@@ -148,17 +159,22 @@ export default function Home() {
       await saveChat(finalMessages)
 
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // 请求被中断，不需要显示错误消息
+        return
+      }
       console.error('Error sending message:', error)
       setMessages(prev => [
         ...prev,
         {
-          role: 'assistant' as const,
+          role: 'assistant',
           content: '抱歉，发生了错误，请稍后重试。',
           timestamp: Date.now()
         }
       ])
     } finally {
       setIsLoading(false)
+      setAbortController(null)
     }
   }
 
@@ -307,21 +323,41 @@ export default function Home() {
                     }}
                   />
                   <button
-                    type="submit"
-                    className={`absolute right-2 bottom-2 p-1.5 rounded transition-colors ${
-                      message.trim() && !isLoading
-                        ? 'text-blue-500 hover:text-white hover:bg-blue-500'
-                        : 'text-gray-300'
+                    type={isLoading ? 'button' : 'submit'}
+                    onClick={isLoading ? handleAbort : undefined}
+                    className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200 ${
+                      isLoading
+                        ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        : message.trim()
+                        ? 'text-white bg-blue-500 hover:bg-blue-600'
+                        : 'text-gray-300 cursor-not-allowed'
                     }`}
-                    disabled={!message.trim() || isLoading}
+                    disabled={!isLoading && !message.trim()}
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="w-5 h-5 transform rotate-90"
-                      fill="currentColor"
-                    >
-                      <path d="M 12 2 L 4 22 L 12 19 L 20 22 Z" />
-                    </svg>
+                    {isLoading ? (
+                      // 优化的停止图标
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      </svg>
+                    ) : (
+                      // 优化的发送图标
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        stroke="none"
+                      >
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                      </svg>
+                    )}
                   </button>
                 </div>
               </form>
