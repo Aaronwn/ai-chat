@@ -6,7 +6,7 @@ console.log('API Key exists:', !!apiKey);
 
 const openai = new OpenAI({
   apiKey: apiKey,
-  baseURL: 'https://api.deepseek.com/v1'
+  baseURL: 'https://api.deepseek.com/v1',
 });
 
 export const runtime = 'edge';
@@ -14,29 +14,23 @@ export const runtime = 'edge';
 export async function POST(req: Request) {
   try {
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'API key is not configured' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      return new Response(JSON.stringify({ error: 'API key is not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid messages format' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid messages format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const stream = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: 'deepseek-chat',
       messages: messages,
       temperature: 0.7,
       max_tokens: 2000,
@@ -78,29 +72,27 @@ export async function POST(req: Request) {
       cancel() {
         // 处理流被取消的情况
         console.log('Stream was canceled');
-      }
+      },
     });
 
     return new Response(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       },
     });
-
   } catch (error: any) {
     console.error('Error:', error);
     return new Response(
       JSON.stringify({
         error: '服务器错误，请稍后重试',
-        details: error.message
+        details: error.message,
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }
 }
-
